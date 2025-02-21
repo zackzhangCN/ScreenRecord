@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import java.awt.*;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 
 /**
  * @author zack
@@ -62,7 +64,7 @@ public class RecordClientUI extends JFrame {
         newsJlabel.setForeground(Color.BLUE);
         this.add(newsJlabel);
         // 目录选择按钮
-        JButton chooseDirButton = new JButton("选择目录");
+        JButton chooseDirButton = new JButton("选择");
         chooseDirButton.setBorderPainted(false);
         chooseDirButton.setForeground(Color.BLUE);
         chooseDirButton.setPreferredSize(new Dimension(180, 50));
@@ -93,8 +95,22 @@ public class RecordClientUI extends JFrame {
         stopButton.setFont(new Font("楷体", Font.BOLD, 25));
         stopButton.setBackground(Color.LIGHT_GRAY);
         this.add(stopButton);
-        // 默认禁用
+        // 默认禁用停止按钮
         stopButton.setEnabled(false);
+
+        JCheckBox micCheckBox = new JCheckBox("麦克风已禁用");
+        micCheckBox.setFont(new Font("楷体", Font.BOLD, 25));
+        int iconWidth = 30;
+        int iconHeight = 30;
+        // 启用时的图标
+        ImageIcon selectIcon = new ImageIcon(RecordClientUI.class.getResource("/mic_select.png"));
+        Image resizeSelectIcon = selectIcon.getImage().getScaledInstance(iconWidth, iconHeight, Image.SCALE_SMOOTH);
+        micCheckBox.setSelectedIcon(new ImageIcon(resizeSelectIcon));
+        // 未启用时的图标
+        ImageIcon unSelectIcon = new ImageIcon(RecordClientUI.class.getResource("/mic_unselect.png"));
+        Image resizeUnSelectIcon = unSelectIcon.getImage().getScaledInstance(iconWidth, iconHeight, Image.SCALE_SMOOTH);
+        micCheckBox.setIcon(new ImageIcon(resizeUnSelectIcon));
+        this.add(micCheckBox);
 
         // 展示窗口
         this.setVisible(true);
@@ -141,5 +157,20 @@ public class RecordClientUI extends JFrame {
             stopButton.setEnabled(false);
             JOptionPane.showMessageDialog(null, "已保存到" + savePath, "完成", JOptionPane.INFORMATION_MESSAGE);
         });
+
+        // 监听复选框的选中状态变化
+        micCheckBox.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                    micCheckBox.setText("麦克风已启用");
+//                    windowsScreenRecord.setMicrophoneEnabled(true);
+                } else {
+                    micCheckBox.setText("麦克风已禁用");
+//                    windowsScreenRecord.setMicrophoneEnabled(false);
+                }
+            }
+        });
+
     }
 }
