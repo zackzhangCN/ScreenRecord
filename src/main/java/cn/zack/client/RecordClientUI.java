@@ -23,7 +23,8 @@ public class RecordClientUI extends JFrame {
 
     private static RecordClientUI instance = null;
 
-    private static String savePath = "";
+    private static String videoSavePath = "";
+    private static String audioSavePath = "";
 
     private RecordClientUI() {
     }
@@ -136,9 +137,9 @@ public class RecordClientUI extends JFrame {
         // 开始按钮点击事件
         startButton.addActionListener(e -> {
             // 获取选择的路径
-            savePath = pathTextField.getText() + System.currentTimeMillis() + ".mp4";
+            videoSavePath = pathTextField.getText() + System.currentTimeMillis() + ".mp4";
             // 开启录制
-            windowsScreenRecord.startRecording(savePath);
+            windowsScreenRecord.startVideoRecording(videoSavePath);
             // 禁用开始按钮
             startButton.setEnabled(false);
             // 启用停止按钮
@@ -147,7 +148,7 @@ public class RecordClientUI extends JFrame {
 
         // 停止按钮点击事件
         stopButton.addActionListener(e -> {
-            windowsScreenRecord.stopRecording();
+            windowsScreenRecord.stopVideoRecording();
             // 弹窗提醒
             UIManager.put("OptionPane.buttonFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
             UIManager.put("OptionPane.messageFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
@@ -155,7 +156,7 @@ public class RecordClientUI extends JFrame {
             startButton.setEnabled(true);
             // 禁用停止按钮
             stopButton.setEnabled(false);
-            JOptionPane.showMessageDialog(null, "已保存到" + savePath, "完成", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(null, "已保存到" + videoSavePath, "完成", JOptionPane.INFORMATION_MESSAGE);
         });
 
         // 监听复选框的选中状态变化
@@ -164,10 +165,11 @@ public class RecordClientUI extends JFrame {
             public void itemStateChanged(ItemEvent e) {
                 if (e.getStateChange() == ItemEvent.SELECTED) {
                     micCheckBox.setText("麦克风已启用");
-//                    windowsScreenRecord.setMicrophoneEnabled(true);
+                    audioSavePath = pathTextField.getText() + System.currentTimeMillis() + ".wav";
+                    windowsScreenRecord.startAudioRecording(audioSavePath);
                 } else {
                     micCheckBox.setText("麦克风已禁用");
-//                    windowsScreenRecord.setMicrophoneEnabled(false);
+                    windowsScreenRecord.stopAudioRecording();
                 }
             }
         });
