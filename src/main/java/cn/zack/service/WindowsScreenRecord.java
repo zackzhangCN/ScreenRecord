@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -161,6 +163,13 @@ public class WindowsScreenRecord {
         }).start();
     }
 
+    /**
+     * 合并一批音频到视频文件中
+     *
+     * @param videoPath  原视频文件
+     * @param outPutPath 新生成的视频文件
+     * @param audioMap   音频文件以及音轨开始位置
+     */
     public void mergeVideoAndAudio(String videoPath, String outPutPath, HashMap<String, Long> audioMap) {
         List<String> keyList = new ArrayList<>();
         keyList.addAll(audioMap.keySet());
@@ -178,7 +187,7 @@ public class WindowsScreenRecord {
         String command = String.format(
                 "./bin/ffmpeg -i " +
                         videoPath + " " +
-                        source+
+                        source +
                         "-filter_complex \"[0:a]adelay=0|0[original]; " +
                         adelay +
                         "[original]" +
@@ -202,6 +211,13 @@ public class WindowsScreenRecord {
             System.out.println("开始合成...");
             // 等待进程结束（这行代码只会在录制结束后才返回，不要在 EDT 中调用）
             int exitCode = audioRecordFfmpegProcess.waitFor();
+            // 正常退出, 说明合成完毕, 清理旧文件
+            if (exitCode == 0) {
+                Files.deleteIfExists(Paths.get(videoPath));
+                for (String audio : keyList) {
+                    Files.deleteIfExists(Paths.get(audio));
+                }
+            }
             System.out.println("合成完成: " + exitCode);
         } catch (IOException | InterruptedException e) {
             System.out.println("合成异常");

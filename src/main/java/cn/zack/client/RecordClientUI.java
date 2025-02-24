@@ -86,10 +86,10 @@ public class RecordClientUI extends JFrame {
         FlowLayout flowLayout = new FlowLayout();
         this.setLayout(flowLayout);
 
-        JLabel newsJlabel = new JLabel("保存到");
-        newsJlabel.setFont(new Font("楷体", Font.BOLD, 25));
-        newsJlabel.setForeground(Color.BLUE);
-        this.add(newsJlabel);
+        JLabel saveLabel = new JLabel("保存到");
+        saveLabel.setFont(new Font("楷体", Font.BOLD, 25));
+        saveLabel.setForeground(Color.BLUE);
+        this.add(saveLabel);
         // 目录选择按钮
         JButton chooseDirButton = new JButton("选择目录");
         chooseDirButton.setBorderPainted(false);
@@ -248,9 +248,13 @@ public class RecordClientUI extends JFrame {
 
         // 监听生成按钮点击事件
         finishButton.addActionListener(e -> {
-            String resultPath = pathTextField.getText() + System.currentTimeMillis() + ".mp4";
-            // 合成音视频
-            windowsScreenRecord.mergeVideoAndAudio(videoSavePath, resultPath, audioOffsetMap);
+            String resultPath = videoSavePath;
+            // 有录音存在, 需要合并
+            if (audioOffsetMap.size() > 0) {
+                resultPath = pathTextField.getText() + System.currentTimeMillis() + ".mp4";
+                // 合成音视频
+                windowsScreenRecord.mergeVideoAndAudio(videoSavePath, resultPath, audioOffsetMap);
+            }
             // 禁用生成按钮
             finishButton.setEnabled(false);
             // 启用开始录制按钮
@@ -261,6 +265,7 @@ public class RecordClientUI extends JFrame {
             startRecordVideoMills = 0L;
             audioOffsetMap = new HashMap<>();
 
+            // 复制最终结果到剪切板
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             StringSelection stringSelection = new StringSelection(resultPath);
             clipboard.setContents(stringSelection, null);
