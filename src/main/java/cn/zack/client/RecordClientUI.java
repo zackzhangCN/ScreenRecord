@@ -72,13 +72,15 @@ public class RecordClientUI extends JFrame {
         // 窗口标题
         this.setTitle("录屏工具plus++");
         // 窗口大小
-        this.setSize(800, 300);
+        this.setSize(800, 310);
         // 不可调整窗口大小
-        this.setResizable(true);
+        this.setResizable(false);
         // 窗口关闭时退出程序
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         // 居中显示
         this.setLocationRelativeTo(null);
+        // 设置窗口图标
+        this.setIconImage(new ImageIcon(RecordClientUI.class.getResource("/icon.jpg")).getImage());
 
         // 流式布局
         FlowLayout flowLayout = new FlowLayout();
@@ -89,7 +91,7 @@ public class RecordClientUI extends JFrame {
         newsJlabel.setForeground(Color.BLUE);
         this.add(newsJlabel);
         // 目录选择按钮
-        JButton chooseDirButton = new JButton("选择");
+        JButton chooseDirButton = new JButton("选择目录");
         chooseDirButton.setBorderPainted(false);
         chooseDirButton.setForeground(Color.BLUE);
         chooseDirButton.setPreferredSize(new Dimension(180, 50));
@@ -158,6 +160,16 @@ public class RecordClientUI extends JFrame {
         // 默认禁用停止按钮
         finishButton.setEnabled(false);
 
+
+        JLabel space = new JLabel("                                                          " +
+                "                                                                                 " +
+                "                                                                                 ");
+        this.add(space);
+        // 创建显示文字的标签
+        JLabel footerLabel = new JLabel("Designed By zhangyl07");
+        footerLabel.setFont(new Font("微软雅黑", Font.PLAIN, 14));
+        footerLabel.setForeground(Color.GRAY);
+        this.add(footerLabel);
         // 展示窗口
         this.setVisible(true);
 
@@ -212,8 +224,6 @@ public class RecordClientUI extends JFrame {
             finishButton.setEnabled(true);
 
             // 弹窗提醒
-            UIManager.put("OptionPane.buttonFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
-            UIManager.put("OptionPane.messageFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
             JOptionPane.showMessageDialog(null, "录制结束", "录制视频", JOptionPane.INFORMATION_MESSAGE);
         });
 
