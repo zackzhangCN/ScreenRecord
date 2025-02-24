@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.util.HashMap;
@@ -26,7 +28,7 @@ public class RecordClientUI extends JFrame {
 
     /**
      * 录制的视频文件保存位置
-     * eg: D:\123.mp4
+     * eg: D:\init.bat.mp4
      */
     private static String videoSavePath = "";
 
@@ -68,7 +70,7 @@ public class RecordClientUI extends JFrame {
      */
     public void initUI() {
         // 窗口标题
-        this.setTitle("刘总专用录屏工具plus++");
+        this.setTitle("录屏工具plus++");
         // 窗口大小
         this.setSize(800, 300);
         // 不可调整窗口大小
@@ -108,6 +110,8 @@ public class RecordClientUI extends JFrame {
         startButton.setPreferredSize(new Dimension(180, 50));
         startButton.setFont(new Font("楷体", Font.BOLD, 25));
         startButton.setBackground(Color.LIGHT_GRAY);
+        // 默认禁用
+        startButton.setEnabled(false);
         this.add(startButton);
 
         // 停止按钮
@@ -140,6 +144,7 @@ public class RecordClientUI extends JFrame {
         ImageIcon unSelectIcon = new ImageIcon(RecordClientUI.class.getResource("/unselect.png"));
         Image resizeUnSelectIcon = unSelectIcon.getImage().getScaledInstance(iconWidth, iconHeight, Image.SCALE_SMOOTH);
         micCheckBox.setIcon(new ImageIcon(resizeUnSelectIcon));
+        micCheckBox.setEnabled(false);
         this.add(micCheckBox);
 
         // 生成按钮
@@ -171,6 +176,9 @@ public class RecordClientUI extends JFrame {
             int returnVal = fileChooser.showOpenDialog(this);
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 pathTextField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+                // 选择完目录之后, 启用开始录制按钮, 禁用目录选择按钮
+                startButton.setEnabled(true);
+                chooseDirButton.setEnabled(false);
             }
         });
 
@@ -182,10 +190,10 @@ public class RecordClientUI extends JFrame {
             windowsScreenRecord.startVideoRecording(videoSavePath);
             // 记录视频文件开始录制的毫秒值
             startRecordVideoMills = System.currentTimeMillis();
-            // 禁用开始按钮
+            // 开始录制之后, 禁用开始按钮, 启用停止按钮和录音按钮
             startButton.setEnabled(false);
-            // 启用停止按钮
             stopButton.setEnabled(true);
+            micCheckBox.setEnabled(true);
         });
 
         // 监听停止按钮点击事件
@@ -194,16 +202,19 @@ public class RecordClientUI extends JFrame {
             windowsScreenRecord.stopAudioRecording();
             // 再停止录屏
             windowsScreenRecord.stopVideoRecording();
-            // 弹窗提醒
-            UIManager.put("OptionPane.buttonFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
-            UIManager.put("OptionPane.messageFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
-            // 启用开始按钮
-            startButton.setEnabled(true);
-            // 禁用停止按钮
+
+            // 停止录制之后, 关闭麦克风
+            micCheckBox.setSelected(false);
+            // 禁用停止按钮和录音按钮
+            micCheckBox.setEnabled(false);
             stopButton.setEnabled(false);
             // 启用生成按钮
             finishButton.setEnabled(true);
-            JOptionPane.showMessageDialog(null, "录制结束", "完成", JOptionPane.INFORMATION_MESSAGE);
+
+            // 弹窗提醒
+            UIManager.put("OptionPane.buttonFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
+            UIManager.put("OptionPane.messageFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
+            JOptionPane.showMessageDialog(null, "录制结束", "录制视频", JOptionPane.INFORMATION_MESSAGE);
         });
 
         // 监听录音按钮的状态变化
@@ -227,10 +238,26 @@ public class RecordClientUI extends JFrame {
 
         // 监听生成按钮点击事件
         finishButton.addActionListener(e -> {
+            String resultPath = pathTextField.getText() + System.currentTimeMillis() + ".mp4";
             // 合成音视频
-            windowsScreenRecord.mergeVideoAndAudio(videoSavePath, pathTextField.getText() + System.currentTimeMillis() + ".mp4", audioOffsetMap);
+            windowsScreenRecord.mergeVideoAndAudio(videoSavePath, resultPath, audioOffsetMap);
             // 禁用生成按钮
             finishButton.setEnabled(false);
+            // 启用开始录制按钮
+            startButton.setEnabled(true);
+            // 重置数据
+            videoSavePath = "";
+            audioSavePath = "";
+            startRecordVideoMills = 0L;
+            audioOffsetMap = new HashMap<>();
+
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            StringSelection stringSelection = new StringSelection(resultPath);
+            clipboard.setContents(stringSelection, null);
+            // 弹窗提醒
+            UIManager.put("OptionPane.buttonFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
+            UIManager.put("OptionPane.messageFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
+            JOptionPane.showMessageDialog(null, "生成视频成功, 视频地址已复制到剪切板", "生成视频", JOptionPane.INFORMATION_MESSAGE);
         });
     }
 }
