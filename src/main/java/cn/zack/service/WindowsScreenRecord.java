@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -158,5 +159,52 @@ public class WindowsScreenRecord {
                 }
             }
         }).start();
+    }
+
+    public void mergeVideoAndAudio(String videoPath, String outPutPath, HashMap<String, Long> audioMap) {
+        List<String> keyList = new ArrayList<>();
+        keyList.addAll(audioMap.keySet());
+
+        String source = "";
+        String adelay = "";
+        String num = "";
+        int size = keyList.size() + 1;
+        for (int i = 0; i < keyList.size(); i++) {
+            source += "-i " + keyList.get(i) + " ";
+            adelay += "[" + (i + 1) + "]adelay=" + audioMap.get(keyList.get(i)) + "|" + audioMap.get(keyList.get(i)) + "[a" + (i + 1) + "]; ";
+            num += "[a" + (i + 1) + "]";
+        }
+
+        String command = String.format(
+                "ffmpeg -i " +
+                        videoPath + " " +
+                        source+
+                        "-filter_complex \"[0:a]adelay=0|0[original]; " +
+                        adelay +
+                        "[original]" +
+                        num +
+                        "amix=inputs=" +
+                        size +
+                        ":normalize=1[mixed_audio]\" -map 0:v -map \"[mixed_audio]\" -c:v copy -c:a aac " +
+                        outPutPath
+        );
+
+        System.out.println(command);
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command.split(" "));
+        // 合并输出，便于日志调试
+        processBuilder.redirectErrorStream(true);
+        // 这里可以重定向到文件或继承当前进程的输出
+        processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+
+        try {
+            audioRecordFfmpegProcess = processBuilder.start();
+            System.out.println("开始合成...");
+            // 等待进程结束（这行代码只会在录制结束后才返回，不要在 EDT 中调用）
+            int exitCode = audioRecordFfmpegProcess.waitFor();
+            System.out.println("合成完成: " + exitCode);
+        } catch (IOException | InterruptedException e) {
+            System.out.println("合成异常");
+        }
     }
 }
