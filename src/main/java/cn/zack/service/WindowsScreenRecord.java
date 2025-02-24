@@ -8,10 +8,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Windows 桌面屏幕画面和系统声音混合录制
@@ -222,5 +225,24 @@ public class WindowsScreenRecord {
         } catch (IOException | InterruptedException e) {
             System.out.println("合成异常");
         }
+    }
+
+    /**
+     * 获取指定相似文件, 用于查找指定文件的分片文件列表
+     *
+     * @param searchPath 要搜索的文件名    eg: D:\abc\def\1234
+     * @return 相似文件名   eg: D:\abc\def\12345.txt, D:\abc\def\1234.pdf
+     */
+    public List<String> getShardFiles(String searchPath) {
+        Path startPath = Paths.get(searchPath.substring(0, searchPath.lastIndexOf("\\")));
+        try (Stream<Path> stream = Files.walk(startPath)) {
+            List<String> collect = stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().startsWith(searchPath.substring(3)))
+                    .map(c -> c.toString())
+                    .collect(Collectors.toList());
+            return collect;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
     }
 }
