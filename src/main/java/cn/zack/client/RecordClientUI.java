@@ -99,16 +99,23 @@ public class RecordClientUI extends JFrame {
         // 默认禁用停止按钮
         stopButton.setEnabled(false);
 
-        JCheckBox micCheckBox = new JCheckBox("麦克风已禁用");
+        // 从接口获取麦克风设备列表，示例中使用模拟数据
+        String[] micDevices = windowsScreenRecord.getAudioMicrophoneDevices();
+        JComboBox<String> micComboBox = new JComboBox<>(micDevices);
+        micComboBox.setFont(new Font("楷体", Font.BOLD, 20));
+        micComboBox.setPreferredSize(new Dimension(200, 40));
+        this.add(micComboBox);
+
+        JCheckBox micCheckBox = new JCheckBox("");
         micCheckBox.setFont(new Font("楷体", Font.BOLD, 25));
         int iconWidth = 30;
         int iconHeight = 30;
-        // 启用时的图标
-        ImageIcon selectIcon = new ImageIcon(RecordClientUI.class.getResource("/mic_select.png"));
+        // 麦克风启用时的图标
+        ImageIcon selectIcon = new ImageIcon(RecordClientUI.class.getResource("/select.png"));
         Image resizeSelectIcon = selectIcon.getImage().getScaledInstance(iconWidth, iconHeight, Image.SCALE_SMOOTH);
         micCheckBox.setSelectedIcon(new ImageIcon(resizeSelectIcon));
-        // 未启用时的图标
-        ImageIcon unSelectIcon = new ImageIcon(RecordClientUI.class.getResource("/mic_unselect.png"));
+        // 麦克风禁用时的图标
+        ImageIcon unSelectIcon = new ImageIcon(RecordClientUI.class.getResource("/unselect.png"));
         Image resizeUnSelectIcon = unSelectIcon.getImage().getScaledInstance(iconWidth, iconHeight, Image.SCALE_SMOOTH);
         micCheckBox.setIcon(new ImageIcon(resizeUnSelectIcon));
         this.add(micCheckBox);
@@ -164,15 +171,12 @@ public class RecordClientUI extends JFrame {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 if (e.getStateChange() == ItemEvent.SELECTED) {
-                    micCheckBox.setText("麦克风已启用");
                     audioSavePath = pathTextField.getText() + System.currentTimeMillis() + ".wav";
-                    windowsScreenRecord.startAudioRecording(audioSavePath);
+                    windowsScreenRecord.startAudioRecording(audioSavePath, (String) micComboBox.getSelectedItem());
                 } else {
-                    micCheckBox.setText("麦克风已禁用");
                     windowsScreenRecord.stopAudioRecording();
                 }
             }
         });
-
     }
 }

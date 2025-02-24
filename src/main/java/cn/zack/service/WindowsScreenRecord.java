@@ -1,13 +1,14 @@
 package cn.zack.service;
 
-import org.bytedeco.ffmpeg.global.avcodec;
-import org.bytedeco.javacv.*;
 import org.springframework.stereotype.Component;
 
-import javax.sound.sampled.*;
-import java.io.File;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Windows 桌面屏幕画面和系统声音混合录制
@@ -15,228 +16,147 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 public class WindowsScreenRecord {
 
-    private static FFmpegFrameGrabber videoGrabber;
-    private static FFmpegFrameRecorder videoRecorder;
-
-    /**
-     * 是否开启视频和系统音频录制
-     */
-    private static AtomicBoolean videoIsRecording = new AtomicBoolean(false);
-
-    /**
-     * 是否开启麦克风录制
-     */
-    private static AtomicBoolean audioIsRecording = new AtomicBoolean(false);
-    private TargetDataLine targetDataLine;
+    private Process videoRecordFfmpegProcess;
+    private Process audioRecordFfmpegProcess;
+    private Thread videoRecordProcessThread;
+    private Thread audioRecordProcessThread;
 
     /**
      * 开始录制桌面屏幕和系统声音
      */
     public void startVideoRecording(String output) {
-        videoGrabber = new FFmpegFrameGrabber("video=screen-capture-recorder:audio=virtual-audio-capturer");
-        videoGrabber.setFormat("dshow");
+        // 在后台线程中启动录制
+        videoRecordProcessThread = new Thread(() -> {
+            String ffmpegCommand = "ffmpeg -f dshow -i video=\"screen-capture-recorder\" -f dshow -i audio=\"virtual-audio-capturer\" " +
+                    "-vcodec libx264 -preset:v fast -crf 23 -acodec aac -b:a 128k -pix_fmt yuv420p -r 30 " + output;
 
-        try {
-            videoGrabber.start();
+            ProcessBuilder processBuilder = new ProcessBuilder(ffmpegCommand.split(" "));
+            // 合并输出，便于日志调试
+            processBuilder.redirectErrorStream(true);
+            // 这里可以重定向到文件或继承当前进程的输出
+            processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
-            videoRecorder = new FFmpegFrameRecorder(output, videoGrabber.getImageWidth(), videoGrabber.getImageHeight(), videoGrabber.getAudioChannels());
-            videoRecorder.setFormat("mp4");
-            videoRecorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
-            videoRecorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
-
-            // 5Mbps 高码率
-            videoRecorder.setVideoBitrate(5_000_000);
-            // FPS 30
-            videoRecorder.setFrameRate(30);
-            // 避免颜色失真
-            videoRecorder.setPixelFormat(0);
-
-            // 侧重编码速度
-            videoRecorder.setVideoOption("preset", "ultrafast");
-            // 侧重低延迟
-            videoRecorder.setVideoOption("tune", "zerolatency");
-            // GOP 大小, 提升质量
-            videoRecorder.setGopSize(30);
-
-            // 192Kbps, 提高音频质量
-            videoRecorder.setAudioBitrate(192_000);
-            // 音频
-            videoRecorder.setSampleRate(44100);
-            videoRecorder.start();
-            System.out.println("视频录制已开始");
-
-            videoIsRecording.set(true);
-            new Thread(() -> {
-                try {
-                    Frame frame;
-                    while (videoIsRecording.get() && (frame = videoGrabber.grab()) != null) {
-                        videoRecorder.record(frame);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    stopVideoRecording();
-                }
-            }).start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            try {
+                videoRecordFfmpegProcess = processBuilder.start();
+                System.out.println("开始录屏...");
+                // 等待进程结束（这行代码只会在录制结束后才返回，不要在 EDT 中调用）
+                int exitCode = videoRecordFfmpegProcess.waitFor();
+                System.out.println("完成录屏: " + exitCode);
+            } catch (Exception e) {
+                System.out.println("录屏异常");
+                ;
+            }
+        });
+        videoRecordProcessThread.start();
     }
 
     /**
      * 停止录制视频和系统声音
      */
     public void stopVideoRecording() {
-        videoIsRecording.set(false);
-        try {
-            videoRecorder.stop();
-            videoRecorder.release();
-            videoGrabber.stop();
-            videoGrabber.release();
-            System.out.println("视频录制已停止");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        new Thread(() -> {
+            if (videoRecordFfmpegProcess != null) {
+                try {
+                    OutputStream os = videoRecordFfmpegProcess.getOutputStream();
+                    os.write("q".getBytes());
+                    os.flush();
+                    System.out.println("停止录屏...");
+                } catch (Exception e) {
+                    System.out.println("停止录屏异常");
+                }
+            }
+        }).start();
     }
 
     /**
-     * 混合音视频
+     * 获取系统中所有的音频设备（麦克风）名称
      *
-     * @param videoPath
-     * @param outputPath
+     * @return 音频设备名称数组
      */
-    public void mixVideoAndAudio(String videoPath, String outputPath) {
-        String[] audioPaths = {"123.mp3", "345.mp3"}; // 多个音频路径
-
+    public static String[] getAudioMicrophoneDevices() {
+        System.out.println("尝试获取音频设备列表");
+        List<String> devices = new ArrayList<>();
         try {
-            // 初始化视频抓取器
-            FFmpegFrameGrabber videoGrabber = new FFmpegFrameGrabber(videoPath);
-            videoGrabber.start();
+            // 构造 ffmpeg 命令：列出所有 DirectShow 设备
+            ProcessBuilder pb = new ProcessBuilder(
+                    "ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy"
+            );
+            // ffmpeg 的设备列表信息通常输出到标准错误流
+            Process process = pb.start();
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8)
+            );
 
-            // 获取视频参数
-            int videoWidth = videoGrabber.getImageWidth();
-            int videoHeight = videoGrabber.getImageHeight();
-            int videoChannels = videoGrabber.getAudioChannels();
-
-            // 初始化音频抓取器
-            FFmpegFrameGrabber[] audioGrabbers = new FFmpegFrameGrabber[audioPaths.length];
-            for (int i = 0; i < audioPaths.length; i++) {
-                audioGrabbers[i] = new FFmpegFrameGrabber(audioPaths[i]);
-                audioGrabbers[i].start();
-            }
-
-            // 创建输出录制器
-            FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputPath, videoWidth, videoHeight, videoChannels);
-            recorder.setFormat("mp4");
-            recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
-            recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
-            recorder.setVideoBitrate(5_000_000);
-            recorder.setAudioBitrate(192_000);
-            recorder.setFrameRate(30);
-            recorder.setSampleRate(44100);
-
-            recorder.start();
-
-            // 记录视频流
-            Frame videoFrame;
-            while ((videoFrame = videoGrabber.grab()) != null) {
-                recorder.record(videoFrame);
-            }
-
-            // 设置音频的开始时间（按分钟计算）
-            int[] audioStartTimes = {180, 300}; // 音频1从第3分钟开始，音频2从第5分钟开始
-
-            // 合并音频到视频
-            for (int i = 0; i < audioGrabbers.length; i++) {
-                Frame audioFrame;
-                long audioStartTimestamp = audioStartTimes[i] * 1000000L; // 转为微秒
-
-                while ((audioFrame = audioGrabbers[i].grab()) != null) {
-                    if (audioGrabbers[i].getTimestamp() >= audioStartTimestamp) {
-                        recorder.record(audioFrame);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // 只取音频设备, 且排除dshow虚拟驱动
+                if (line.contains("(audio)") && !line.contains("(video)") && !line.contains("virtual-audio-capturer")) {
+                    // 设备名称一般位于双引号内
+                    int firstQuote = line.indexOf("\"");
+                    int lastQuote = line.indexOf("\"", firstQuote + 1);
+                    if (firstQuote != -1 && lastQuote != -1 && lastQuote > firstQuote) {
+                        String deviceName = line.substring(firstQuote + 1, lastQuote);
+                        System.out.println("获取到音频设备: " + deviceName);
+                        devices.add(deviceName);
                     }
                 }
             }
-
-            // 完成录制
-            recorder.stop();
-            recorder.release();
-            videoGrabber.stop();
-            for (FFmpegFrameGrabber audioGrabber : audioGrabbers) {
-                audioGrabber.stop();
-            }
-            System.out.println("音频和视频合成完成，输出文件: " + outputPath);
-        } catch (Exception e) {
-            e.printStackTrace();
+            reader.close();
+            process.waitFor();
+        } catch (Exception ex) {
+            System.out.println("获取音频设备异常");
         }
+        return devices.toArray(new String[0]);
     }
 
     /**
-     * 开启录制麦克风音频
+     * 开始录制音频
+     *
+     * @param audioSavePath        保存音频文件的路径（例如：D:\record.wav）
+     * @param microphoneDeviceName 麦克风设备名称（例如："本机麦克风 (适用于数字麦克风的英特尔® 智音技术)"）
      */
-    public void startAudioRecording(String output) {
-        // 设置音频格式
-        AudioFormat audioFormat = new AudioFormat(
-                AudioFormat.Encoding.PCM_SIGNED,   // 使用 PCM 编码格式
-                44100,                            // 设置采样率为 44100 Hz
-                16,                               // 设置位深度为 16 位
-                2,                                // 立体声
-                4,                                // 每帧的字节数，立体声需要 4 字节
-                44100,                            // 设定帧速率
-                false                              // 小端字节序
-        );
-        DataLine.Info dataLineInfo = new DataLine.Info(TargetDataLine.class, audioFormat);
+    public void startAudioRecording(String audioSavePath, String microphoneDeviceName) {
+        // 在后台线程中启动录制
+        audioRecordProcessThread = new Thread(() -> {
+            String command = String.format(
+                    "ffmpeg -f dshow -i audio=\"%s\" -acodec pcm_s16le -ar 44100 -ac 2 -y %s",
+                    microphoneDeviceName, audioSavePath
+            );
 
-        // 获取音频输入设备
-        try {
-            targetDataLine = (TargetDataLine) AudioSystem.getLine(dataLineInfo);
-            targetDataLine.open(audioFormat);
-        } catch (LineUnavailableException e) {
-            System.err.println("无法获取音频设备：" + e.getMessage());
-            return;
-        }
+            ProcessBuilder processBuilder = new ProcessBuilder(command.split(" "));
+            // 合并输出，便于日志调试
+            processBuilder.redirectErrorStream(true);
+            // 这里可以重定向到文件或继承当前进程的输出
+            processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
-        // 输出到音频文件
-        File outputFile = new File(output);
-
-        // 创建文件输出流和音频输入流
-        try {
-            AudioFileFormat.Type fileType = AudioFileFormat.Type.WAVE;
-
-            // 创建一个音频输入流，传递给 AudioSystem.write 方法
-            AudioInputStream audioInputStream = new AudioInputStream(targetDataLine);
-            // 启动录音线程
-            audioIsRecording.set(true);
-            targetDataLine.start();
-            System.out.println("录音已开始...");
-
-            // 在另一个线程中录音
-            Thread recordingThread = new Thread(() -> {
-                try {
-                    AudioSystem.write(audioInputStream, fileType, outputFile);
-                    System.out.println("录音已保存到: " + outputFile.getAbsolutePath());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-            recordingThread.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            try {
+                audioRecordFfmpegProcess = processBuilder.start();
+                System.out.println("开始录音...");
+                // 等待进程结束（这行代码只会在录制结束后才返回，不要在 EDT 中调用）
+                int exitCode = audioRecordFfmpegProcess.waitFor();
+                System.out.println("录音完成: " + exitCode);
+            } catch (IOException | InterruptedException e) {
+                System.out.println("录音异常");
+            }
+        });
+        audioRecordProcessThread.start();
     }
 
     /**
-     * 停止录制麦克风音频
+     * 停止录制音频
      */
     public void stopAudioRecording() {
-        if (audioIsRecording.get() && targetDataLine != null) {
-            // 停止录音
-            targetDataLine.stop();
-            targetDataLine.close();
-            audioIsRecording.set(false);
-            System.out.println("录音已停止");
-        } else {
-            System.out.println("没有正在进行的录音");
-        }
+        new Thread(() -> {
+            if (audioRecordFfmpegProcess != null) {
+                try {
+                    OutputStream os = audioRecordFfmpegProcess.getOutputStream();
+                    os.write("q".getBytes());
+                    os.flush();
+                    System.out.println("停止录音");
+                } catch (Exception e) {
+                    System.out.println("停止录音异常");
+                }
+            }
+        }).start();
     }
 }
