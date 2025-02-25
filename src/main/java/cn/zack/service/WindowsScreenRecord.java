@@ -10,11 +10,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Windows 桌面屏幕画面和系统声音混合录制
@@ -31,10 +31,14 @@ public class WindowsScreenRecord {
      * 开始录制桌面屏幕和系统声音
      */
     public void startVideoRecording(String output) {
+        String prefix = output.split("\\.")[0];
+        String suffix = output.split("\\.")[1];
+
         // 在后台线程中启动录制
         videoRecordProcessThread = new Thread(() -> {
-            String ffmpegCommand = "./bin/ffmpeg -f dshow -i video=\"screen-capture-recorder\" -f dshow -i audio=\"virtual-audio-capturer\" " +
-                    "-vcodec libx264 -preset:v fast -crf 23 -acodec aac -b:a 128k -pix_fmt yuv420p -r 30 " + output;
+            String ffmpegCommand = "ffmpeg -f dshow -i video=\"screen-capture-recorder\" -f dshow -i audio=\"virtual-audio-capturer\" " +
+                    "-vcodec libx264 -preset:v fast -crf 23 -acodec aac -b:a 128k -pix_fmt yuv420p -r 30 " +
+                    "-segment_time 60 -f segment -reset_timestamps 1 " + prefix + "_%03d." + suffix;
 
             ProcessBuilder processBuilder = new ProcessBuilder(ffmpegCommand.split(" "));
             // 合并输出，便于日志调试
@@ -48,6 +52,34 @@ public class WindowsScreenRecord {
                 // 等待进程结束（这行代码只会在录制结束后才返回，不要在 EDT 中调用）
                 int exitCode = videoRecordFfmpegProcess.waitFor();
                 System.out.println("完成录屏: " + exitCode);
+                if (exitCode == 0) {
+                    // 列出分片文件
+                    List<String> shardingFiles = getShardFiles(prefix + "_");
+                    List<String> fileNames = shardingFiles
+                            .stream().map(c -> "file '" + c + "'").collect(Collectors.toList());
+                    // 有分片, 需要合并
+                    if (!fileNames.isEmpty()) {
+                        // 写入txt文件
+                        Path filePath = Paths.get("videoSharding.txt");
+                        Files.write(filePath, new byte[0], StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                        Files.write(filePath, fileNames, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                        // 合并视频文件
+                        String mergeCommand = "ffmpeg -f concat -safe 0 -i videoSharding.txt -c copy " + output;
+                        processBuilder = new ProcessBuilder(mergeCommand.split(" "));
+                        processBuilder.redirectErrorStream(true);
+                        processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                        videoRecordFfmpegProcess = processBuilder.start();
+                        System.out.println("开始合并视频分片...");
+                        int shardingCode = videoRecordFfmpegProcess.waitFor();
+                        System.out.println("完成合并分片: " + shardingCode);
+                        // 删除分片文件
+                        if (shardingCode == 0) {
+                            for (String file : shardingFiles) {
+                                Files.deleteIfExists(Paths.get(file));
+                            }
+                        }
+                    }
+                }
             } catch (Exception e) {
                 System.out.println("录屏异常");
                 ;
@@ -234,13 +266,23 @@ public class WindowsScreenRecord {
      * @return 相似文件名   eg: D:\abc\def\12345.txt, D:\abc\def\1234.pdf
      */
     public List<String> getShardFiles(String searchPath) {
-        Path startPath = Paths.get(searchPath.substring(0, searchPath.lastIndexOf("\\")));
-        try (Stream<Path> stream = Files.walk(startPath)) {
-            List<String> collect = stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().startsWith(searchPath.substring(3)))
+        // 获取目录 D:\abc\def
+        Path parentDir = Paths.get(searchPath).getParent();
+        // 获取前缀 1740444994434
+        String prefix = Paths.get(searchPath).getFileName().toString();
+
+        if (parentDir == null || !Files.isDirectory(parentDir)) {
+            System.out.println("目录不存在");
+            return new ArrayList<>();
+        }
+
+        try {
+            List<String> matchingFiles = Files.list(parentDir)
+                    .filter(path -> Files.isRegularFile(path) && path.getFileName().toString().startsWith(prefix))
                     .map(c -> c.toString())
                     .collect(Collectors.toList());
-            return collect;
-        } catch (Exception e) {
+            return matchingFiles;
+        } catch (IOException e) {
             e.printStackTrace();
         }
         return new ArrayList<>();
