@@ -71,7 +71,7 @@ public class WindowsScreenRecord {
                         videoRecordFfmpegProcess = processBuilder.start();
                         System.out.println("开始合并视频分片...");
                         int shardingCode = videoRecordFfmpegProcess.waitFor();
-                        System.out.println("完成合并分片: " + shardingCode);
+                        System.out.println("完成合并视频分片: " + shardingCode);
                         // 删除分片文件
                         if (shardingCode == 0) {
                             for (String file : shardingFiles) {
@@ -117,7 +117,7 @@ public class WindowsScreenRecord {
         try {
             // 构造 ffmpeg 命令：列出所有 DirectShow 设备
             ProcessBuilder pb = new ProcessBuilder(
-                    "./bin/ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy"
+                    "ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy"
             );
             // ffmpeg 的设备列表信息通常输出到标准错误流
             Process process = pb.start();
@@ -154,12 +154,13 @@ public class WindowsScreenRecord {
      * @param microphoneDeviceName 麦克风设备名称（例如："本机麦克风 (适用于数字麦克风的英特尔® 智音技术)"）
      */
     public void startAudioRecording(String audioSavePath, String microphoneDeviceName) {
+        String prefix = audioSavePath.split("\\.")[0];
+        String suffix = audioSavePath.split("\\.")[1];
         // 在后台线程中启动录制
         audioRecordProcessThread = new Thread(() -> {
-            String command = String.format(
-                    "./bin/ffmpeg -f dshow -i audio=\"%s\" -acodec pcm_s16le -ar 44100 -ac 2 -y %s",
-                    microphoneDeviceName, audioSavePath
-            );
+            String command = "ffmpeg -f dshow -i audio=\"" + microphoneDeviceName +
+                            "\" -acodec pcm_s16le -ar 44100 -ac 2 -y " +
+                            "-segment_time 60 -f segment -reset_timestamps 1 " + prefix + "_%03d." + suffix;
 
             ProcessBuilder processBuilder = new ProcessBuilder(command.split(" "));
             // 合并输出，便于日志调试
@@ -173,8 +174,39 @@ public class WindowsScreenRecord {
                 // 等待进程结束（这行代码只会在录制结束后才返回，不要在 EDT 中调用）
                 int exitCode = audioRecordFfmpegProcess.waitFor();
                 System.out.println("录音完成: " + exitCode);
+
+                if (exitCode == 0) {
+                    // 列出分片文件
+                    List<String> shardingFiles = getShardFiles(prefix + "_");
+                    List<String> fileNames = shardingFiles
+                            .stream().map(c -> "file '" + c + "'").collect(Collectors.toList());
+                    // 有分片, 需要合并
+                    if (!fileNames.isEmpty()) {
+                        // 写入txt文件
+                        Path filePath = Paths.get("audioSharding.txt");
+                        Files.write(filePath, new byte[0], StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                        Files.write(filePath, fileNames, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                        // 合并音频文件
+                        String mergeCommand = "ffmpeg -f concat -safe 0 -i audioSharding.txt -c copy " + audioSavePath;
+                        processBuilder = new ProcessBuilder(mergeCommand.split(" "));
+                        processBuilder.redirectErrorStream(true);
+                        processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                        audioRecordFfmpegProcess = processBuilder.start();
+                        System.out.println("开始合并音频分片...");
+                        int shardingCode = audioRecordFfmpegProcess.waitFor();
+                        System.out.println("完成合并音频分片: " + shardingCode);
+                        // 删除分片文件
+                        if (shardingCode == 0) {
+                            for (String file : shardingFiles) {
+                                Files.deleteIfExists(Paths.get(file));
+                            }
+                        }
+                    }
+                }
+
             } catch (IOException | InterruptedException e) {
                 System.out.println("录音异常");
+                e.printStackTrace();
             }
         });
         audioRecordProcessThread.start();
@@ -220,7 +252,7 @@ public class WindowsScreenRecord {
         }
 
         String command = String.format(
-                "./bin/ffmpeg -i " +
+                "ffmpeg -i " +
                         videoPath + " " +
                         source +
                         "-filter_complex \"[0:a]adelay=0|0[original]; " +
