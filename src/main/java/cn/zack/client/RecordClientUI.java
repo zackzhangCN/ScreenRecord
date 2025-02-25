@@ -15,8 +15,9 @@ import java.awt.event.ItemListener;
 import java.util.HashMap;
 
 /**
- * @author zack
  * 客户端UI界面
+ *
+ * @author 张云龙
  */
 @Component("RecordClientUI")
 public class RecordClientUI extends JFrame {
@@ -80,7 +81,7 @@ public class RecordClientUI extends JFrame {
         // 居中显示
         this.setLocationRelativeTo(null);
         // 设置窗口图标
-        this.setIconImage(new ImageIcon(RecordClientUI.class.getResource("/icon.jpg")).getImage());
+        this.setIconImage(new ImageIcon(RecordClientUI.class.getResource("/icon.png")).getImage());
 
         // 流式布局
         FlowLayout flowLayout = new FlowLayout();
@@ -232,6 +233,8 @@ public class RecordClientUI extends JFrame {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 if (e.getStateChange() == ItemEvent.SELECTED) {
+                    // 开始录音之后, 禁用切换麦克风的下拉选
+                    micComboBox.setEnabled(false);
                     // 开始录音的时间
                     long startRecordAudioTime = System.currentTimeMillis();
                     // 本次录音文件的保存位置
@@ -241,6 +244,8 @@ public class RecordClientUI extends JFrame {
                     // 记录本次录音的落后时间差
                     audioOffsetMap.put(pathTextField.getText() + startRecordAudioTime + ".wav", startRecordAudioTime - startRecordVideoMills);
                 } else {
+                    // 停止录音之后, 启用切换麦克风的下拉选
+                    micComboBox.setEnabled(true);
                     windowsScreenRecord.stopAudioRecording();
                 }
             }

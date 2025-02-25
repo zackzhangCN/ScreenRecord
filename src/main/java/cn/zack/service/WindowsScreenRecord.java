@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 
 /**
  * Windows 桌面屏幕画面和系统声音混合录制
+ *
+ * @author 张云龙
  */
 @Component
 public class WindowsScreenRecord {
@@ -159,8 +161,8 @@ public class WindowsScreenRecord {
         // 在后台线程中启动录制
         audioRecordProcessThread = new Thread(() -> {
             String command = "./bin/ffmpeg -f dshow -i audio=\"" + microphoneDeviceName +
-                            "\" -acodec pcm_s16le -ar 44100 -ac 2 -y " +
-                            "-segment_time 60 -f segment -reset_timestamps 1 " + prefix + "_%03d." + suffix;
+                    "\" -acodec pcm_s16le -ar 44100 -ac 2 -y " +
+                    "-segment_time 60 -f segment -reset_timestamps 1 " + prefix + "_%03d." + suffix;
 
             ProcessBuilder processBuilder = new ProcessBuilder(command.split(" "));
             // 合并输出，便于日志调试
