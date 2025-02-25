@@ -187,7 +187,7 @@ public class RecordClientUI extends JFrame {
 
             int returnVal = fileChooser.showOpenDialog(this);
             if (returnVal == JFileChooser.APPROVE_OPTION) {
-                pathTextField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+                pathTextField.setText(fileChooser.getSelectedFile().getAbsolutePath() + "\\");
                 // 选择完目录之后, 启用开始录制按钮, 禁用目录选择按钮
                 startButton.setEnabled(true);
                 chooseDirButton.setEnabled(false);

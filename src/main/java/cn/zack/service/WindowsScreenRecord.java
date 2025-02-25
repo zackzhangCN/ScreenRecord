@@ -36,7 +36,7 @@ public class WindowsScreenRecord {
 
         // 在后台线程中启动录制
         videoRecordProcessThread = new Thread(() -> {
-            String ffmpegCommand = "ffmpeg -f dshow -i video=\"screen-capture-recorder\" -f dshow -i audio=\"virtual-audio-capturer\" " +
+            String ffmpegCommand = "./bin/ffmpeg -f dshow -i video=\"screen-capture-recorder\" -f dshow -i audio=\"virtual-audio-capturer\" " +
                     "-vcodec libx264 -preset:v fast -crf 23 -acodec aac -b:a 128k -pix_fmt yuv420p -r 30 " +
                     "-segment_time 60 -f segment -reset_timestamps 1 " + prefix + "_%03d." + suffix;
 
@@ -117,7 +117,7 @@ public class WindowsScreenRecord {
         try {
             // 构造 ffmpeg 命令：列出所有 DirectShow 设备
             ProcessBuilder pb = new ProcessBuilder(
-                    "ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy"
+                    "./bin/ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy"
             );
             // ffmpeg 的设备列表信息通常输出到标准错误流
             Process process = pb.start();
@@ -158,7 +158,7 @@ public class WindowsScreenRecord {
         String suffix = audioSavePath.split("\\.")[1];
         // 在后台线程中启动录制
         audioRecordProcessThread = new Thread(() -> {
-            String command = "ffmpeg -f dshow -i audio=\"" + microphoneDeviceName +
+            String command = "./bin/ffmpeg -f dshow -i audio=\"" + microphoneDeviceName +
                             "\" -acodec pcm_s16le -ar 44100 -ac 2 -y " +
                             "-segment_time 60 -f segment -reset_timestamps 1 " + prefix + "_%03d." + suffix;
 
@@ -252,7 +252,7 @@ public class WindowsScreenRecord {
         }
 
         String command = String.format(
-                "ffmpeg -i " +
+                "./bin/ffmpeg -i " +
                         videoPath + " " +
                         source +
                         "-filter_complex \"[0:a]adelay=0|0[original]; " +
