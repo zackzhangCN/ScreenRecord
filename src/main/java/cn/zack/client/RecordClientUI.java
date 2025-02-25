@@ -2,6 +2,8 @@ package cn.zack.client;
 
 import cn.zack.service.WindowsScreenRecord;
 import com.formdev.flatlaf.FlatLightLaf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +23,7 @@ import java.util.HashMap;
  */
 @Component("RecordClientUI")
 public class RecordClientUI extends JFrame {
+    private static final Logger logger = LoggerFactory.getLogger(RecordClientUI.class);
 
     @Autowired
     private WindowsScreenRecord windowsScreenRecord;
@@ -188,6 +191,7 @@ public class RecordClientUI extends JFrame {
 
             int returnVal = fileChooser.showOpenDialog(this);
             if (returnVal == JFileChooser.APPROVE_OPTION) {
+                logger.info("选择保存目录");
                 pathTextField.setText(fileChooser.getSelectedFile().getAbsolutePath() + "\\");
                 // 选择完目录之后, 启用开始录制按钮, 禁用目录选择按钮
                 startButton.setEnabled(true);
@@ -197,6 +201,7 @@ public class RecordClientUI extends JFrame {
 
         // 监听开始按钮点击事件
         startButton.addActionListener(e -> {
+            logger.info("点击开始录制按钮");
             // 获取选择的路径
             videoSavePath = pathTextField.getText() + System.currentTimeMillis() + ".mp4";
             // 开启录制
@@ -211,6 +216,7 @@ public class RecordClientUI extends JFrame {
 
         // 监听停止按钮点击事件
         stopButton.addActionListener(e -> {
+            logger.info("点击停止录制按钮");
             // 先停止录音
             windowsScreenRecord.stopAudioRecording();
             // 再停止录屏
@@ -233,6 +239,7 @@ public class RecordClientUI extends JFrame {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 if (e.getStateChange() == ItemEvent.SELECTED) {
+                    logger.info("启用录音");
                     // 开始录音之后, 禁用切换麦克风的下拉选
                     micComboBox.setEnabled(false);
                     // 开始录音的时间
@@ -244,6 +251,7 @@ public class RecordClientUI extends JFrame {
                     // 记录本次录音的落后时间差
                     audioOffsetMap.put(pathTextField.getText() + startRecordAudioTime + ".wav", startRecordAudioTime - startRecordVideoMills);
                 } else {
+                    logger.info("禁用录音");
                     // 停止录音之后, 启用切换麦克风的下拉选
                     micComboBox.setEnabled(true);
                     windowsScreenRecord.stopAudioRecording();
@@ -253,6 +261,7 @@ public class RecordClientUI extends JFrame {
 
         // 监听生成按钮点击事件
         finishButton.addActionListener(e -> {
+            logger.info("点击生成视频按钮");
             String resultPath = videoSavePath;
             // 有录音存在, 需要合并
             if (audioOffsetMap.size() > 0) {

@@ -1,2 +1,10 @@
 server:
   port: 19527
+
+logging:
+  level:
+    root: info
+  file:
+    name: ./logs/app.log
+    max-size: 10MB
+    max-history: 30
