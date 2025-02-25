@@ -73,7 +73,7 @@ public class RecordClientUI extends JFrame {
         // 窗口标题
         this.setTitle("录屏工具plus++");
         // 窗口大小
-        this.setSize(800, 310);
+        this.setSize(600, 240);
         // 不可调整窗口大小
         this.setResizable(false);
         // 窗口关闭时退出程序
@@ -88,30 +88,30 @@ public class RecordClientUI extends JFrame {
         this.setLayout(flowLayout);
 
         JLabel saveLabel = new JLabel("保存到");
-        saveLabel.setFont(new Font("楷体", Font.BOLD, 25));
+        saveLabel.setFont(new Font("楷体", Font.BOLD, 18));
         saveLabel.setForeground(Color.BLUE);
         this.add(saveLabel);
         // 目录选择按钮
         JButton chooseDirButton = new JButton("选择目录");
         chooseDirButton.setBorderPainted(false);
         chooseDirButton.setForeground(Color.BLUE);
-        chooseDirButton.setPreferredSize(new Dimension(180, 50));
-        chooseDirButton.setFont(new Font("楷体", Font.BOLD, 20));
+        chooseDirButton.setPreferredSize(new Dimension(135, 37));
+        chooseDirButton.setFont(new Font("楷体", Font.BOLD, 15));
         chooseDirButton.setBackground(Color.LIGHT_GRAY);
         this.add(chooseDirButton);
 
         // 显示选择的目录路径
         JTextField pathTextField = new JTextField(40);
-        pathTextField.setFont(new Font("微软雅黑", Font.PLAIN, 20));
-        pathTextField.setPreferredSize(new Dimension(600, 40));
+        pathTextField.setFont(new Font("微软雅黑", Font.PLAIN, 15));
+        pathTextField.setPreferredSize(new Dimension(450, 30));
         this.add(pathTextField);
 
         // 录制按钮
         JButton startButton = new JButton("开始录制");
         startButton.setBorderPainted(false);
         startButton.setForeground(Color.BLUE);
-        startButton.setPreferredSize(new Dimension(180, 50));
-        startButton.setFont(new Font("楷体", Font.BOLD, 25));
+        startButton.setPreferredSize(new Dimension(135, 37));
+        startButton.setFont(new Font("楷体", Font.BOLD, 18));
         startButton.setBackground(Color.LIGHT_GRAY);
         // 默认禁用
         startButton.setEnabled(false);
@@ -121,8 +121,8 @@ public class RecordClientUI extends JFrame {
         JButton stopButton = new JButton("停止录制");
         stopButton.setBorderPainted(false);
         stopButton.setForeground(Color.BLUE);
-        stopButton.setPreferredSize(new Dimension(180, 50));
-        stopButton.setFont(new Font("楷体", Font.BOLD, 25));
+        stopButton.setPreferredSize(new Dimension(135, 37));
+        stopButton.setFont(new Font("楷体", Font.BOLD, 18));
         stopButton.setBackground(Color.LIGHT_GRAY);
         this.add(stopButton);
         // 默认禁用停止按钮
@@ -131,12 +131,12 @@ public class RecordClientUI extends JFrame {
         // 从接口获取麦克风设备列表，示例中使用模拟数据
         String[] micDevices = windowsScreenRecord.getAudioMicrophoneDevices();
         JComboBox<String> micComboBox = new JComboBox<>(micDevices);
-        micComboBox.setFont(new Font("楷体", Font.BOLD, 20));
-        micComboBox.setPreferredSize(new Dimension(200, 40));
+        micComboBox.setFont(new Font("楷体", Font.BOLD, 15));
+        micComboBox.setPreferredSize(new Dimension(150, 30));
         this.add(micComboBox);
 
         JCheckBox micCheckBox = new JCheckBox("");
-        micCheckBox.setFont(new Font("楷体", Font.BOLD, 25));
+        micCheckBox.setFont(new Font("楷体", Font.BOLD, 18));
         int iconWidth = 30;
         int iconHeight = 30;
         // 麦克风启用时的图标
@@ -154,21 +154,21 @@ public class RecordClientUI extends JFrame {
         JButton finishButton = new JButton("生成视频");
         finishButton.setBorderPainted(false);
         finishButton.setForeground(Color.BLUE);
-        finishButton.setPreferredSize(new Dimension(180, 50));
-        finishButton.setFont(new Font("楷体", Font.BOLD, 25));
+        finishButton.setPreferredSize(new Dimension(135, 37));
+        finishButton.setFont(new Font("楷体", Font.BOLD, 18));
         finishButton.setBackground(Color.LIGHT_GRAY);
         this.add(finishButton);
         // 默认禁用停止按钮
         finishButton.setEnabled(false);
 
 
-        JLabel space = new JLabel("                                                          " +
-                "                                                                                 " +
+        JLabel space = new JLabel(
+                "                                                          " +
                 "                                                                                 ");
         this.add(space);
         // 创建显示文字的标签
         JLabel footerLabel = new JLabel("Designed By zhangyl07");
-        footerLabel.setFont(new Font("微软雅黑", Font.PLAIN, 14));
+        footerLabel.setFont(new Font("微软雅黑", Font.PLAIN, 10));
         footerLabel.setForeground(Color.GRAY);
         this.add(footerLabel);
         // 展示窗口
@@ -275,8 +275,8 @@ public class RecordClientUI extends JFrame {
             StringSelection stringSelection = new StringSelection(resultPath);
             clipboard.setContents(stringSelection, null);
             // 弹窗提醒
-            UIManager.put("OptionPane.buttonFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
-            UIManager.put("OptionPane.messageFont", new FontUIResource(new Font("楷体", Font.BOLD, 20)));
+            UIManager.put("OptionPane.buttonFont", new FontUIResource(new Font("楷体", Font.BOLD, 15)));
+            UIManager.put("OptionPane.messageFont", new FontUIResource(new Font("楷体", Font.BOLD, 15)));
             JOptionPane.showMessageDialog(null, "生成视频成功, 视频地址已复制到剪切板", "生成视频", JOptionPane.INFORMATION_MESSAGE);
         });
     }
