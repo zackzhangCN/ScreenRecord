@@ -4,8 +4,7 @@
 
 注意:
 
-- 需要ffmpeg环境
-- 需要dshow插件
+- 需要ffmpeg和dshow插件(已提供)
 
 启动说明:
 
