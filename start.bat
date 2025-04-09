@@ -1,3 +1,3 @@
 @echo off
-start javaw -jar ScreenRecord.jar
+start javaw -jar ./ScreenRecord.jar
 exit

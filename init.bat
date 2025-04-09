@@ -1,5 +1,5 @@
 @echo off
-echo 正在静默安装Dshow插件，请稍候...
-start /wait setup.exe /SILENT
-echo 安装完成！
+echo install dshow ...
+start /B ./Setup.Screen.Capturer.Recorder.v0.13.3.exe /SILENT /VERYSILENT /NORESTART /SUPPRESSMSGBOXES
+echo install finish
 exit
